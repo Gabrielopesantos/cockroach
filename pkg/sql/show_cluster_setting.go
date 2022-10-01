@@ -19,11 +19,13 @@ import (
 	"time"
 
 	"github.com/cockroachdb/cockroach/pkg/clusterversion"
+	"github.com/cockroachdb/cockroach/pkg/docs"
 	"github.com/cockroachdb/cockroach/pkg/kv"
 	"github.com/cockroachdb/cockroach/pkg/roachpb"
 	"github.com/cockroachdb/cockroach/pkg/security/username"
 	"github.com/cockroachdb/cockroach/pkg/settings"
 	"github.com/cockroachdb/cockroach/pkg/sql/catalog/colinfo"
+	"github.com/cockroachdb/cockroach/pkg/sql/pgwire/pgnotice"
 	"github.com/cockroachdb/cockroach/pkg/sql/sem/tree"
 	"github.com/cockroachdb/cockroach/pkg/sql/sessiondata"
 	"github.com/cockroachdb/cockroach/pkg/sql/types"
@@ -121,6 +123,17 @@ func (p *planner) ShowClusterSetting(
 	)
 	if !ok {
 		return nil, errors.Errorf("unknown setting: %q", name)
+	}
+
+	if strings.HasPrefix(name, "sql.defaults") {
+		p.BufferClientNotice(
+			context.TODO(),
+			errors.WithHintf(
+				pgnotice.Newf("selecting global default %s is not recommended", name),
+				"",
+				docs.URL(""),
+			),
+		)
 	}
 
 	if err := checkPrivilegesForSetting(ctx, p, name, "show"); err != nil {
